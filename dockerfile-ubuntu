@@ -8,71 +8,34 @@ LABEL org.opencontainers.image.authors="FakeBilly"
 WORKDIR /root
 USER root
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV KASM_USER=monet \
+    DEBIAN_FRONTEND=noninteractive \
+    STARTUPDIR=/dockerstartup \
+    NODE_VERSION=v16.20.2 \
+    NVM_BIN=/usr/local/nvm/versions/node/$NODE_VERSION/bin \
+    NVM_DIR=/usr/local/nvm \
+    DEFAULT_PROFILE_HOME=/home/kasm-default-profile \
+    STARTUPDIR=/dockerstartup \
+    INST_DIR=$STARTUPDIR/install
 
-# JDK
-RUN mkdir -pv /usr/local/jdk \
-    && wget -qO /usr/local/jdk/jdk-17.0.8.tar.gz https://download.oracle.com/java/17/archive/jdk-17.0.8_linux-x64_bin.tar.gz \
-    && tar -zxf /usr/local/jdk/jdk-17.0.8.tar.gz -C /usr/local/jdk/ \
-    && echo '\n\
-export JAVA_HOME=/usr/local/jdk/jdk-17.0.8\n\
-export PATH=$PATH:$JAVA_HOME/bin\n' >> /etc/profile.d/jdk.sh \
-    && rm -rf /usr/local/jdk/jdk-17.0.8.tar.gz
+ARG CUSTOME_INST_SCRIPTS="/ubuntu/install/jdk/install_jdk.sh \
+                  /ubuntu/install/maven/install_maven.sh \
+                  /ubuntu/install/nvm/install_nvm_0_39_5.sh \
+                  /ubuntu/install/pyenv/install_pyenv_2_3_28.sh \
+                  /ubuntu/install/git/install_git_2_36.sh \
+                  /ubuntu/install/jetbrains/idea/install_idea_2021_3.sh \
+                  /ubuntu/install/jetbrains/datagrip/install_datagrop_2019_3.sh \
+                  /ubuntu/install/jetbrains/pycharm/install_pycharm_2019_3.sh \
+                  /ubuntu/install/jetbrains/webstorm/install_webstorm_2019_3.sh"
 
-ENV JAVA_HOME /usr/local/jdk/jdk-17.0.8
-ENV PATH $JAVA_HOME/bin:$PATH
 
-# Maven
-RUN mkdir -pv /usr/local/maven \
-    && wget -qO /usr/local/maven/apache-maven-3.8.8.tar.gz https://archive.apache.org/dist/maven/maven-3/3.8.8/binaries/apache-maven-3.8.8-bin.tar.gz \
-    && tar -zxf /usr/local/maven/apache-maven-3.8.8.tar.gz -C /usr/local/maven/ \
-    && echo '\n\
-export MAVEN_HOME=/usr/local/maven/apache-maven-3.8.8\n\
-export PATH=$PATH:$MAVEN_HOME/bin\n' >> /etc/profile.d/maven.sh \
-    && rm -rf /usr/local/maven/apache-maven-3.8.8.tar.gz
+COPY ./src/ $INST_DIR
 
-ENV MAVEN_HOME /usr/local/maven/apache-maven-3.8.8
-ENV PATH $PATH:$MAVEN_HOME/bin
-
-# Git
-RUN apt-get -y remove git \
-    && apt-get -y purge git \
-    && apt-get -y autoremove \
-    && apt-get clean \
-    && apt-get update \
-    && apt-get install -y gcc build-essential zlib1g-dev libssl-dev dh-autoreconf libcurl4-gnutls-dev libexpat1-dev gettext libz-dev libssl-dev install-info \
-    && mkdir -pv ~/git \
-    && wget -qO ~/git/git-2.36.6.tar.gz https://mirrors.edge.kernel.org/pub/software/scm/git/git-2.36.6.tar.gz \
-    && tar -zxf ~/git/git-2.36.6.tar.gz -C ~/git/ \
-    && cd ~/git/git-2.36.6 \
-    && ./configure --prefix=/usr/local/git all \
-    && make prefix=/usr/local/git all \
-    && make prefix=/usr/local/git install \
-    && cd - \
-    && echo '\n\
-export GIT_HOME=/usr/local/git\n\
-export PATH=$GIT_HOME/bin:$PATH\n' >> /etc/profile.d/git.sh \
-    && rm -rf ~/git
-
-ENV GIT_HOME /usr/local/git
-ENV PATH $GIT_HOME/bin:$PATH
-
-# nvm
-ENV NODE_VERSION=v16.20.2
-
-RUN echo '\n\
-export NVM_BIN=/usr/local/nvm/versions/node\n\
-export NVM_DIR=/usr/local/nvm\n\
-export NODE_PATH=/usr/local/nvm/versions/node/v16.20.2\n\
-export PATH=$NODE_PATH/bin:$PATH\n\
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"\n\
-[[ -r $NVM_DIR/bash_completion ]] && \. $NVM_DIR/bash_completion\n' >> /etc/profile.d/nvm.sh
-
-ENV NVM_BIN /usr/local/nvm/versions/node
-ENV NVM_DIR /usr/local/nvm
-
-RUN mkdir -pv /usr/local/nvm \
-    && wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash \
+RUN  \
+    for SCRIPT in $CUSTOME_INST_SCRIPTS; do \
+        bash ${INST_DIR}${SCRIPT}; \
+    done  \
+    && bash /usr/local/nvm/install_nvm_0.39.5.sh \
     && . $NVM_DIR/nvm.sh \
     && nvm install v12.22.12 \
     && nvm install v14.21.3 \
@@ -81,34 +44,36 @@ RUN mkdir -pv /usr/local/nvm \
     && nvm alias default $NODE_VERSION \
     && nvm use default
 
-ENV NODE_PATH $NVM_BIN/$NODE_VERSION
-ENV PATH $NVM_BIN/$NODE_VERSION/bin:$PATH
-
-ENV LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8 \
-    LC_CTYPE=en_US.UTF-8 \
-    LC_NUMERIC=en_US.UTF-8 \
-    LC_TIME=en_US.UTF-8 \
-    LC_COLLATE=en_US.UTF-8 \
-    LC_MONETARY=en_US.UTF-8 \
-    LC_MESSAGES=en_US.UTF-8 \
-    LC_PAPER=en_US.UTF-8 \
-    LC_NAME=en_US.UTF-8 \
-    LC_ADDRESS=en_US.UTF-8 \
-    LC_TELEPHONE=en_US.UTF-8 \
-    LC_MEASUREMENT=en_US.UTF-8 \
-    LC_IDENTIFICATION=en_US.UTF-8 \
-    LC_ALL=en_US.UTF-8
-
-
 ARG ROOT_USER=root
 ARG ROOT_USER_PWD=dev1024
 
-ENV KASM_USER monet
-ENV HOME=/home/$KASM_USER
+ENV HOME=/home/$KASM_USER \
+    TZ=Asia/Hong_Kong
 
 RUN echo "${ROOT_USER}:${ROOT_USER_PWD}" | sudo chpasswd \
-    && chown -R monet:monet $HOME
+    && chown -R $KASM_USER:$KASM_USER $HOME/ \
+    && echo '\n\
+LANG=en_US.UTF-8\n\
+LANGUAGE=en_US.UTF-8\n\
+LC_CTYPE=en_US.UTF-8\n\
+LC_NUMERIC=en_US.UTF-8\n\
+LC_TIME=en_US.UTF-8\n\
+LC_COLLATE=en_US.UTF-8\n\
+LC_MONETARY=en_US.UTF-8\n\
+LC_MESSAGES=en_US.UTF-8\n\
+LC_PAPER=en_US.UTF-8\n\
+LC_NAME=en_US.UTF-8\n\
+LC_ADDRESS=en_US.UTF-8\n\
+LC_TELEPHONE=en_US.UTF-8\n\
+LC_MEASUREMENT=en_US.UTF-8\n\
+LC_IDENTIFICATION=en_US.UTF-8\n\
+LC_ALL=en_US.UTF-8\n\
+\n\
+STARTUPDIR=/dockerstartup\n\
+TZ=Asia/Hong_Kong' >> /etc/environment \
+    && mv $INST_DIR/ubuntu/startup_scripts/custom_startup.sh $STARTUPDIR/custom_startup.sh \
+    && chmod +x $STARTUPDIR/custom_startup.sh && chown $KASM_USER:$KASM_USER $STARTUPDIR/custom_startup.sh \
+    && ln -sf /usr/share/zoneinfo/Asia/Hong_Kong /etc/localtime
 
 WORKDIR $HOME
 
